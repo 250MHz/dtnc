@@ -1,6 +1,6 @@
-# .clang-format file based on clang-format 21.1.0
+# .clang-format file based on clang-format 22.1.0
 ---
-AlignAfterOpenBracket: BlockIndent
+AlignAfterOpenBracket: false
 AlignConsecutiveAssignments:
   Enabled: false
 AlignConsecutiveDeclarations:
@@ -39,9 +39,19 @@ BraceWrapping:
   SplitEmptyFunction: false
   SplitEmptyRecord: false
 BreakAdjacentStringLiterals: true
+BreakAfterOpenBracketBracedList: true
+BreakAfterOpenBracketFunction: true
+BreakAfterOpenBracketIf: true
+BreakAfterOpenBracketLoop: false
+BreakAfterOpenBracketSwitch: false
 BreakAfterReturnType: Automatic
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Custom
+BreakBeforeCloseBracketBracedList: true
+BreakBeforeCloseBracketFunction: true
+BreakBeforeCloseBracketIf: true
+BreakBeforeCloseBracketLoop: false
+BreakBeforeCloseBracketSwitch: false
 BreakBeforeTernaryOperators: true
 BreakStringLiterals: false
 ColumnLimit: 80
@@ -85,6 +95,7 @@ SpaceBeforeCaseColon: false
 SpaceBeforeParens: ControlStatementsExceptControlMacros
 SpaceBeforeSquareBrackets: false
 SpacesBeforeTrailingComments: 1
+SpaceInEmptyBraces: Never
 SpacesInParens: Never
 SpacesInSquareBrackets: false
 UseTab: Never
