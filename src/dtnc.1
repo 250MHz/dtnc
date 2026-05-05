@@ -1,0 +1,132 @@
+.Dd May 5, 2026
+.Dt DTNC 1
+.Os
+.Sh NAME
+.Nm dtnc
+.Nd arbitrary BP sends and receives
+.Sh SYNOPSIS
+.Nm
+.Op Fl d
+.Op Fl s Ar source
+.Op Fl W Ar recvlimit
+.Op Fl w Ar timeout
+.Ar destination_eid
+.Nm
+.Op Fl dkl
+.Op Fl W Ar recvlimit
+.Op Fl w Ar timeout
+.Ar source_eid
+.Sh DESCRIPTION
+.Nm
+.Pq delay-tolerant netcat
+reads and writes data across a delay-tolerant network.
+.Pp
+.Nm
+requires
+.Tn ION
+to operate.
+.Xr ionadmin 1
+and
+.Xr bpadmin 1
+need to be initialized and configured prior to using
+.Nm ,
+at minimum.
+.Pp
+The options are:
+.Bl -tag -width Ds
+.It Fl d
+Do not attempt to read from stdin.
+.It Fl k
+Do not keep track of an Endpoint Identifier
+.Pq EID
+to reply to.
+Requires
+.Fl l .
+When not used,
+the source EID of the first non-anonymous bundle received
+will be the reply destination.
+.It Fl l
+Listen for an incoming bundle rather than initiating by sending
+to a destination.
+Cannot be used together with the
+.Fl s
+option.
+Any timeouts specified with the
+.Fl w
+option are ignored,
+until the first bundle has been received.
+.It Fl s Ar source
+Set the source EID to send bundles from.
+If
+.Ar source
+is a number,
+the source EID
+will be of the form
+.Li ipn: Ns Em fqnn Ns Li : Ns Ar source
+where
+.Em fqnn
+is the running node's Fully Qualified Node Number,
+and
+.Em source
+is a service number.
+Cannot be used together with
+.Fl l .
+.It Fl W Ar recvlimit
+Terminate after receiving
+.Ar recvlimit
+bundles from the network.
+.It Fl w Ar timeout
+Exit if no data is received from stdin or the network after
+.Ar timeout
+seconds.
+The
+.Fl w
+flag has no effect on the
+.Fl l
+option, i.e.,
+.Nm
+will listen forever for an initial incoming bundle,
+regardless of the
+.Fl w
+flag.
+The default is no timeout.
+.El
+.Pp
+.Ar destination_eid
+must be a URI for an EID.
+If the
+.Fl s
+option is not used, an
+.Dq ephemeral
+ipn URI endpoint,
+with the running node's Fully Qualified Node Number
+and a random private service number,
+will be registered and serve as the client's source EID.
+Note that if the endpoint is still in use when
+.Nm
+exits,
+then the endpoint will not be unregistered.
+.Pp
+.Ar source_eid
+is parsed in the same manner as the
+.Ar source
+argument of the
+.Fl s
+option, i.e.,
+it can be a URI or a service number.
+.Sh SEE ALSO
+.Xr bpadmin 1 ,
+.Xr cat 1 ,
+.Xr ionadmin 1 ,
+.Xr ipnadmin 1 ,
+.Xr nc 1
+.Sh AUTHORS
+The original netcat was written by
+.An *Hobbit* Aq Mt hobbit@avian.org .
+.br
+It was rewritten with IPv6 support for OpenBSD by
+.An Eric Jackson Aq Mt ericj@monkey.org .
+.br
+.Nm
+uses some code from the OpenBSD implementation
+mainly to present a familiar interface.

@@ -60,10 +60,12 @@ Cpp11BracedListStyle: true
 DerivePointerAlignment: false
 IncludeBlocks: Regroup
 IncludeCategories:
+  - Regex: '^<(bp|ion|platform|psm|sdr)'
+    Priority: 2
   - Regex: '^<[^/].*\.h'
     Priority: 1
   - Regex: '^\".*\.h\"'
-    Priority: 2
+    Priority: 3
 IncludeIsMainRegex: "(_.*)?$"
 IndentCaseBlocks: false
 IndentCaseLabels: true

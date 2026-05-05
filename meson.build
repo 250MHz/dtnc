@@ -107,3 +107,4 @@ ion_dep = dependency('ion')
 deps = [ion_dep]
 
 subdir('compat')
+subdir('src')
