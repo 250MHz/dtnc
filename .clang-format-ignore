@@ -1,0 +1,4 @@
+compat/errc.c
+compat/strtonum.c
+compat/arc4random.c
+compat/sys/queue.h

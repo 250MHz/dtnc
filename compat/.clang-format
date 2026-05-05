@@ -1,0 +1,8 @@
+BasedOnStyle: InheritParentConfig
+IncludeCategories:
+  - Regex: '^\".*compat\.h\"'
+    Priority: 1
+  - Regex: '^<[^/].*\.h'
+    Priority: 2
+  - Regex: '^\".*\.h\"'
+    Priority: 3
