@@ -743,7 +743,7 @@ static bool is_null_or_invalid_eid(const char *str) {
         return true;
     } else if (meta_eid.nullEndpoint == 1) {
         return true;
-    } else if (meta_eid.elementNbr == 0) {
+    } else if (meta_eid.schemeCodeNbr == ipn && meta_eid.elementNbr == 0) {
         return true;
     }
     return false;
