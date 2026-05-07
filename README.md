@@ -5,7 +5,7 @@ reminiscent of OpenBSD netcat.
 DTN does not have connections, so expect behavior closer to `nc -u`.
 
 It is currently work in progress,
-but the goal is to support nc options that are easily to translate
+but the goal is to support nc options that are easy to translate
 into a DTN setting,
 and to support options specific to DTN.
 
