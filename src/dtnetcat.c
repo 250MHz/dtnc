@@ -61,6 +61,7 @@ static void cleanup(void);
 static uint64_t get_now_ms(void);
 static void update_activity(void);
 static bool passed_timeout(void);
+static bool drain(Object);
 static void send_loop(void);
 static void *recv_loop(void *);
 static bool is_valid_ion_eid(const char *);
@@ -355,6 +356,47 @@ static bool passed_timeout(void) {
     return (now - last) >= (uint64_t)timeout;
 }
 
+// Write the conents of zco to BP.
+// Caller should be holding onto sdr_mutex.
+// Returns true if a failure happened, false otherwise.
+static bool drain(Object zco) {
+    // TODO: don't hardcode lifespan, classOfService, custodySwitch
+    switch (bp_send(
+        sap,
+        dest_eid,
+        NULL,
+        86400,
+        BP_STD_PRIORITY,
+        NoCustodyRequested,
+        0,
+        0,
+        NULL,
+        zco,
+        NULL
+    ))
+    {
+        case 1:
+            return false;
+        case 0:
+            warnx("could not send bundle");
+            if (sdr_begin_xn(sdr) == 0) {
+                warnx("could not initiate a SDR transaction");
+                return true;
+            }
+            zco_destroy(sdr, zco);
+            if (sdr_end_xn(sdr) == -1) {
+                warnx("SDR transaction failed");
+            }
+            return true;
+        case -1:
+            warnx("system error occurred while sending bundle");
+            return true;
+        default:
+            warnx("unexpected value returned by bp_send()");
+            return false;
+    }
+}
+
 // Handles the stdin -> DTN path
 static void send_loop(void) {
     if (dflag) {
@@ -372,57 +414,6 @@ static void send_loop(void) {
     while (true) {
         if (atomic_load(&stopped_recv) || pfd[0].fd == -1) {
             return;
-        }
-
-        if (atomic_load(&has_dest)) {
-            pthread_mutex_lock(&sdr_mutex);
-            while (!STAILQ_EMPTY(&head)) {
-                struct zco_entry *n = STAILQ_FIRST(&head);
-
-                switch (bp_send(
-                    sap,
-                    dest_eid,
-                    NULL,
-                    86400,
-                    BP_STD_PRIORITY,
-                    NoCustodyRequested,
-                    0,
-                    0,
-                    NULL,
-                    n->zco,
-                    NULL
-                ))
-                {
-                    case 1:
-                        break;
-                    case 0:
-                        warnx("could not send bundle");
-                        if (sdr_begin_xn(sdr) == 0) {
-                            warnx("could not initiate a SDR transaction");
-                            pthread_mutex_unlock(&sdr_mutex);
-                            return;
-                        }
-                        zco_destroy(sdr, n->zco);
-                        if (sdr_end_xn(sdr) == -1) {
-                            warnx("SDR transaction failed");
-                            pthread_mutex_unlock(&sdr_mutex);
-                            return;
-                        }
-                        pthread_mutex_unlock(&sdr_mutex);
-                        return;
-                    case -1:
-                        warnx("system error occurred while sending bundle");
-                        pthread_mutex_unlock(&sdr_mutex);
-                        return;
-                    default:
-                        warnx("unexpected value returned by bp_send()");
-                        break;
-                }
-
-                STAILQ_REMOVE_HEAD(&head, entries);
-                free(n);
-            }
-            pthread_mutex_unlock(&sdr_mutex);
         }
 
         // Read from stdin if dest_eid is known
@@ -518,45 +509,9 @@ static void send_loop(void) {
             }
 
             if (atomic_load(&has_dest)) {
-                // TODO: don't hardcode lifespan, classOfService, custodySwitch
-                switch (bp_send(
-                    sap,
-                    dest_eid,
-                    NULL,
-                    86400,
-                    BP_STD_PRIORITY,
-                    NoCustodyRequested,
-                    0,
-                    0,
-                    NULL,
-                    bundle_zco,
-                    NULL
-                ))
-                {
-                    case 1:
-                        break;
-                    case 0:
-                        warnx("could not send bundle");
-                        if (sdr_begin_xn(sdr) == 0) {
-                            warnx("could not initiate a SDR transaction");
-                            pthread_mutex_unlock(&sdr_mutex);
-                            return;
-                        }
-                        zco_destroy(sdr, bundle_zco);
-                        if (sdr_end_xn(sdr) == -1) {
-                            warnx("SDR transaction failed");
-                            pthread_mutex_unlock(&sdr_mutex);
-                            return;
-                        }
-                        pthread_mutex_unlock(&sdr_mutex);
-                        return;
-                    case -1:
-                        warnx("system error occurred while sending bundle");
-                        pthread_mutex_unlock(&sdr_mutex);
-                        return;
-                    default:
-                        warnx("unexpected value returned by bp_send()");
-                        break;
+                bool should_ret = drain(bundle_zco);
+                if (should_ret) {
+                    pfd[0].fd = -1;
                 }
             } else {
                 struct zco_entry *n = malloc(sizeof(struct zco_entry));
@@ -619,6 +574,20 @@ static void *recv_loop(void *arg) {
                         warn("not enough memory to copy destination EID");
                         return NULL;
                     }
+
+                    pthread_mutex_lock(&sdr_mutex);
+                    while (!STAILQ_EMPTY(&head)) {
+                        struct zco_entry *n = STAILQ_FIRST(&head);
+                        bool should_ret = drain(n->zco);
+                        if (should_ret) {
+                            pthread_mutex_unlock(&sdr_mutex);
+                            return NULL;
+                        }
+                        STAILQ_REMOVE_HEAD(&head, entries);
+                        free(n);
+                    }
+                    pthread_mutex_unlock(&sdr_mutex);
+
                     atomic_store(&has_dest, true);
                     pthread_kill(main_thread_id, SIGUSR1);
                 }
