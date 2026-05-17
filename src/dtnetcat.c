@@ -456,7 +456,7 @@ static void send_loop(void) {
         }
 
         // Try to read from stdin
-        if (pfd[0].revents & POLLIN) {
+        if (pfd[0].revents & (POLLIN | POLLHUP)) {
             ssize_t ret = read(pfd[0].fd, stdinbuf, num);
             if (ret == -1 && (errno == EAGAIN || errno == EINTR)) {
                 continue;
