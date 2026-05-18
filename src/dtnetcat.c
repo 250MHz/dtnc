@@ -33,6 +33,7 @@ static int recvcount, recvlimit;
 static int timeout = -1;
 static const char *source_eid = NULL;
 static char *dest_eid = NULL;
+static int ttl = 3600;
 
 struct zco_entry {
     Object zco;
@@ -93,7 +94,7 @@ int main(int argc, char *argv[]) {
         err(EXIT_FAILURE, "could not change action of SIGTERM");
     }
 
-    while ((ch = getopt(argc, argv, "dkls:W:w:")) != -1) {
+    while ((ch = getopt(argc, argv, "dklM:s:W:w:")) != -1) {
         switch (ch) {
             case 'd':
                 dflag = true;
@@ -103,6 +104,12 @@ int main(int argc, char *argv[]) {
                 break;
             case 'l':
                 lflag = true;
+                break;
+            case 'M':
+                ttl = (int)strtonum(optarg, 1, INT_MAX, &errstr);
+                if (errstr != NULL) {
+                    errx(EXIT_FAILURE, "ttl is %s", errstr);
+                }
                 break;
             case 's':
                 sflag = optarg;
@@ -360,12 +367,12 @@ static bool passed_timeout(void) {
 // Caller should be holding onto sdr_mutex.
 // Returns true if a failure happened, false otherwise.
 static bool drain(Object zco) {
-    // TODO: don't hardcode lifespan, classOfService, custodySwitch
+    // TODO: don't hardcode classOfService, custodySwitch
     switch (bp_send(
         sap,
         dest_eid,
         NULL,
-        86400,
+        ttl,
         BP_STD_PRIORITY,
         NoCustodyRequested,
         0,
@@ -750,8 +757,9 @@ static void usage(bool should_exit) {
     (void)fprintf(
         stderr,
         // clang-format off
-"usage: %s [-d] [-s source] [-W recvlimit] [-w timeout] destination_eid\n"
-"       %s [-dkl] [-W recvlimit] [-w timeout] source_eid\n",
+"usage: %s [-d] [-M ttl] [-s source] [-W recvlimit] [-w timeout]\n"
+"            destination_eid\n"
+"       %s [-dkl] [-M ttl] [-W recvlimit] [-w timeout] source_eid\n",
         // clang-format on
         p,
         p
