@@ -7,12 +7,14 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl d
+.Op Fl M Ar ttl
 .Op Fl s Ar source
 .Op Fl W Ar recvlimit
 .Op Fl w Ar timeout
 .Ar destination_eid
 .Nm
 .Op Fl dkl
+.Op Fl M Ar ttl
 .Op Fl W Ar recvlimit
 .Op Fl w Ar timeout
 .Ar source_eid
@@ -55,6 +57,10 @@ Any timeouts specified with the
 .Fl w
 option are ignored,
 until the first bundle has been received.
+.It Fl M Ar ttl
+Set the maximum number of seconds
+that the bundle can remain in-transit (undelivered) in the network
+prior to automatic deletion.
 .It Fl s Ar source
 Set the source EID to send bundles from.
 If
