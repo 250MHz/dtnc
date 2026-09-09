@@ -36,7 +36,7 @@ static char *dest_eid = NULL;
 static int ttl = 3600;
 
 struct zco_entry {
-    Object zco;
+    SdrObject zco;
     size_t obj_length;
     STAILQ_ENTRY(zco_entry) entries;
 };
@@ -62,7 +62,7 @@ static void cleanup(void);
 static uint64_t get_now_ms(void);
 static void update_activity(void);
 static bool passed_timeout(void);
-static bool drain(Object);
+static bool drain(SdrObject);
 static void send_loop(void);
 static void *recv_loop(void *);
 static bool is_valid_ion_eid(const char *);
@@ -366,7 +366,7 @@ static bool passed_timeout(void) {
 // Write the conents of zco to BP.
 // Caller should be holding onto sdr_mutex.
 // Returns true if a failure happened, false otherwise.
-static bool drain(Object zco) {
+static bool drain(SdrObject zco) {
     // TODO: don't hardcode classOfService, custodySwitch
     switch (bp_send(
         sap,
@@ -480,7 +480,7 @@ static void send_loop(void) {
                 pthread_mutex_unlock(&sdr_mutex);
                 return;
             }
-            Object payload_block =
+            SdrObject payload_block =
                 sdr_insert(sdr, (char *)stdinbuf, (size_t)ret);
             if (sdr_end_xn(sdr) == -1) {
                 warnx("SDR transaction failed");
@@ -488,7 +488,7 @@ static void send_loop(void) {
                 return;
             }
 
-            Object bundle_zco = ionCreateZco(
+            SdrObject bundle_zco = ionCreateZco(
                 ZcoSdrSource,
                 payload_block,
                 0,
@@ -498,7 +498,7 @@ static void send_loop(void) {
                 ZcoOutbound,
                 &attendant
             );
-            if (bundle_zco == 0 || bundle_zco == (Object)ERROR) {
+            if (bundle_zco == 0 || bundle_zco == (SdrObject)ERROR) {
                 if (sdr_begin_xn(sdr) == 0) {
                     warnx("could not initiate a SDR transaction to clean");
                     pthread_mutex_unlock(&sdr_mutex);
