@@ -499,6 +499,7 @@ static void send_loop(void) {
                 &attendant
             );
             if (bundle_zco == 0 || bundle_zco == (SdrObject)ERROR) {
+                warnx("could not create ZCO");
                 if (sdr_begin_xn(sdr) == 0) {
                     warnx("could not initiate a SDR transaction to clean");
                     pthread_mutex_unlock(&sdr_mutex);
@@ -510,7 +511,6 @@ static void send_loop(void) {
                     pthread_mutex_unlock(&sdr_mutex);
                     return;
                 }
-                warnx("could not create ZCO");
                 pthread_mutex_unlock(&sdr_mutex);
                 return;
             }
