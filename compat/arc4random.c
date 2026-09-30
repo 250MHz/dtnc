@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: ISC
 /*	$OpenBSD: arc4random.c,v 1.58 2022/07/31 13:41:45 tb Exp $	*/
 
 /*
@@ -38,6 +39,8 @@
 
 #define fatal(...) errx(1, __VA_ARGS__)
 
+#ifndef HAVE_ARC4RANDOM
+
 /*
  * Always use the getentropy implementation from bsd-getentropy.c, which
  * will call a native getentropy if available then fall back as required.
@@ -45,10 +48,14 @@
  */
 int compat_getentropy(void *, size_t);
 
-// Compat getentropy from openssh-portable/openbsd-compat/bsd-getentropy.c
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: ISC
+// SPDX-SnippetCopyrightText: 1996, David Mazieres <dm@uun.org>
+// SPDX-SnippetCopyrightText: 2008, Damien Miller <djm@openbsd.org>
+// SPDX-SnippetCopyrightText: 2013, Markus Friedl <markus@openbsd.org>
+// SPDX-SnippetName: From openssh-portable/openbsd-compat/bsd-getentropy.c
+// SPDX-SnippetComment: 9d92e7b24 (Fix RNG seeding for OpenSSL w/out self seeding., 2023-08-03)
 // Removed OpenSSL and egd/prngd stuff
-
-#ifndef HAVE_ARC4RANDOM
 
 #ifndef DTNC_RANDOM_DEV
 # define DTNC_RANDOM_DEV "/dev/urandom"
@@ -97,7 +104,7 @@ compat_getentropy(void *s, size_t len)
 	close(fd);
 	return 0;
 }
-// End bsd-getentropy.c
+// SPDX-SnippetEnd
 
 #ifdef getentropy
 # undef getentropy
@@ -105,6 +112,11 @@ compat_getentropy(void *s, size_t len)
 #define getentropy(x, y) (compat_getentropy((x), (y)))
 
 #define KEYSTREAM_ONLY
+
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: LicenseRef-PD-2
+// SPDX-SnippetName: From openssh-portable/openbsd-compat/chacha_private.h
+// SPDX-SnippetComment: 6f117cb15 (Remove unused ivbits argument from chacha_keysetup, 2022-03-01)
 
 /* OPENBSD ORIGINAL: lib/libc/crypt/chacha_private.h */
 
@@ -331,7 +343,7 @@ chacha_encrypt_bytes(chacha_ctx *x,const u8 *m,u8 *c,u32 bytes)
 #endif
   }
 }
-// End chacha_private.h
+// SPDX-SnippetEnd
 
 #define minimum(a, b) ((a) < (b) ? (a) : (b))
 
@@ -363,7 +375,15 @@ static struct _rsx {
 static inline int _rs_allocate(struct _rs **, struct _rsx **);
 static inline void _rs_forkdetect(void);
 
-// arc4random.h from openssh-portable/openbsd-compat
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: ISC
+// SPDX-SnippetCopyrightText: 1996, David Mazieres <dm@uun.org>
+// SPDX-SnippetCopyrightText: 2008, Damien Miller <djm@openbsd.org>
+// SPDX-SnippetCopyrightText: 2013, Markus Friedl <markus@openbsd.org>
+// SPDX-SnippetCopyrightText: 2014, Theo de Raadt <deraadt@openbsd.org>
+// SPDX-SnippetName: From openssh-portable/openbsd-compat/arc4random.h
+// SPDX-SnippetComment: b937061fe (Check HAVE_MMAP too now that configure sets it., 2025-10-07)
+
 /*	$OpenBSD: arc4random_linux.h,v 1.12 2019/07/11 10:37:28 inoguchi Exp $	*/
 
 #ifdef HAVE_SYS_MMAN_H
@@ -436,7 +456,7 @@ _rs_allocate(struct _rs **rsp, struct _rsx **rsxp)
 	_ARC4_ATFORK(_rs_forkhandler);
 	return (0);
 }
-// End arc4random.h
+// SPDX-SnippetEnd
 
 static inline void _rs_rekey(u_char *dat, size_t datlen);
 
@@ -598,6 +618,12 @@ arc4random_buf(void *_buf, size_t n)
 }
 #endif /* !defined(HAVE_ARC4RANDOM_BUF) && defined(HAVE_ARC4RANDOM) */
 
+// SPDX-SnippetBegin
+// SPDX-License-Identifier: ISC
+// SPDX-SnippetCopyrightText: 2008, Damien Miller <djm@openbsd.org>
+// SPDX-SnippetName: From openssh-portable/openbsd-compat/arc4random_uniform.c
+// SPDX-SnippetComment: 9b2c5a2db (Fill in missing system header files., 2025-09-05)
+
 /*	$OpenBSD: arc4random_uniform.c,v 1.3 2019/01/20 02:59:07 bcook Exp $	*/
 
 /* OPENBSD ORIGINAL: lib/libc/crypto/arc4random_uniform.c */
@@ -639,3 +665,4 @@ arc4random_uniform(uint32_t upper_bound)
 	return r % upper_bound;
 }
 #endif /* !HAVE_ARC4RANDOM_UNIFORM */
+// SPDX-SnippetEnd
