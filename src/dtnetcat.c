@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 250MHz
+//
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include <assert.h>
 #include <inttypes.h>
 #include <limits.h>

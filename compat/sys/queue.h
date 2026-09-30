@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-3-Clause
 /*	$OpenBSD: queue.h,v 1.46 2020/12/30 13:33:12 millert Exp $	*/
 /*	$NetBSD: queue.h,v 1.11 1996/05/16 05:17:14 mycroft Exp $	*/
 

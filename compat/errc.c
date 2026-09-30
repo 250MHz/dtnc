@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: ISC
 /*
  * Copyright (c) 2023 Omar Polo <op@openbsd.org>
  *

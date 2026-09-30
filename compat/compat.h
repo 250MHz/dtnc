@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 250MHz
+//
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef COMPAT_H
 #define COMPAT_H
 
