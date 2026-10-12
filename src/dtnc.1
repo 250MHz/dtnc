@@ -9,14 +9,14 @@
 .Nd arbitrary BP sends and receives
 .Sh SYNOPSIS
 .Nm
-.Op Fl d
+.Op Fl dN
 .Op Fl M Ar ttl
 .Op Fl s Ar source
 .Op Fl W Ar recvlimit
 .Op Fl w Ar timeout
 .Ar destination_eid
 .Nm
-.Op Fl dkl
+.Op Fl dklN
 .Op Fl M Ar ttl
 .Op Fl W Ar recvlimit
 .Op Fl w Ar timeout
@@ -64,6 +64,11 @@ until the first bundle has been received.
 Set the maximum number of seconds
 that outgoing bundles can remain in-transit (undelivered) in the network
 prior to automatic deletion.
+.It Fl N
+When the
+.Fl l
+option is not used,
+exit after EOF on the input.
 .It Fl s Ar source
 Set the source EID to send bundles from.
 If
