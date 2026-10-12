@@ -467,73 +467,74 @@ static void send_loop(void) {
         }
 
         // Try to read from stdin
-        if (pfd[0].revents & (POLLIN | POLLHUP)) {
-            ssize_t ret = read(pfd[0].fd, stdinbuf, num);
-            if (ret == -1 && (errno == EAGAIN || errno == EINTR)) {
-                continue;
-            } else if (ret == 0 || ret == -1) {
-                pfd[0].fd = -1;
-                continue;
-            }
+        if ((pfd[0].revents & (POLLIN | POLLHUP)) == 0) {
+            continue;
+        }
+        ssize_t ret = read(pfd[0].fd, stdinbuf, num);
+        if (ret == -1 && (errno == EAGAIN || errno == EINTR)) {
+            continue;
+        } else if (ret == 0 || ret == -1) {
+            pfd[0].fd = -1;
+            continue;
+        }
 
-            update_activity();
+        update_activity();
 
-            pthread_mutex_lock(&sdr_mutex);
+        pthread_mutex_lock(&sdr_mutex);
+        if (sdr_begin_xn(sdr) == 0) {
+            warnx("could not initiate a SDR transaction");
+            pthread_mutex_unlock(&sdr_mutex);
+            return;
+        }
+        SdrObject payload_block =
+            sdr_insert(sdr, (char *)stdinbuf, (size_t)ret);
+        if (sdr_end_xn(sdr) == -1) {
+            warnx("SDR transaction failed");
+            pthread_mutex_unlock(&sdr_mutex);
+            return;
+        }
+
+        SdrObject bundle_zco = ionCreateZco(
+            ZcoSdrSource,
+            payload_block,
+            0,
+            ret,
+            BP_STD_PRIORITY,
+            0,
+            ZcoOutbound,
+            &attendant
+        );
+        if (bundle_zco == 0 || bundle_zco == (SdrObject)ERROR) {
+            warnx("could not create ZCO");
             if (sdr_begin_xn(sdr) == 0) {
-                warnx("could not initiate a SDR transaction");
+                warnx("could not initiate a SDR transaction to clean");
                 pthread_mutex_unlock(&sdr_mutex);
                 return;
             }
-            SdrObject payload_block =
-                sdr_insert(sdr, (char *)stdinbuf, (size_t)ret);
+            sdr_free(sdr, payload_block);
             if (sdr_end_xn(sdr) == -1) {
-                warnx("SDR transaction failed");
+                warnx("SDR transaction to clean SDR failed");
                 pthread_mutex_unlock(&sdr_mutex);
                 return;
-            }
-
-            SdrObject bundle_zco = ionCreateZco(
-                ZcoSdrSource,
-                payload_block,
-                0,
-                ret,
-                BP_STD_PRIORITY,
-                0,
-                ZcoOutbound,
-                &attendant
-            );
-            if (bundle_zco == 0 || bundle_zco == (SdrObject)ERROR) {
-                warnx("could not create ZCO");
-                if (sdr_begin_xn(sdr) == 0) {
-                    warnx("could not initiate a SDR transaction to clean");
-                    pthread_mutex_unlock(&sdr_mutex);
-                    return;
-                }
-                sdr_free(sdr, payload_block);
-                if (sdr_end_xn(sdr) == -1) {
-                    warnx("SDR transaction to clean SDR failed");
-                    pthread_mutex_unlock(&sdr_mutex);
-                    return;
-                }
-                pthread_mutex_unlock(&sdr_mutex);
-                return;
-            }
-
-            if (atomic_load(&has_dest)) {
-                bool should_ret = drain(bundle_zco);
-                if (should_ret) {
-                    pfd[0].fd = -1;
-                }
-            } else {
-                struct zco_entry *n = malloc(sizeof(struct zco_entry));
-                n->zco = bundle_zco;
-                n->obj_length = (size_t)ret;
-
-                STAILQ_INSERT_TAIL(&head, n, entries);
-                stdinbufpos += n->obj_length;
             }
             pthread_mutex_unlock(&sdr_mutex);
+            return;
         }
+
+        if (atomic_load(&has_dest)) {
+            bool should_ret = drain(bundle_zco);
+            if (should_ret) {
+                pfd[0].fd = -1;
+            }
+        } else {
+            struct zco_entry *n = malloc(sizeof(struct zco_entry));
+            n->zco = bundle_zco;
+            n->obj_length = (size_t)ret;
+
+            STAILQ_INSERT_TAIL(&head, n, entries);
+            stdinbufpos += n->obj_length;
+        }
+        pthread_mutex_unlock(&sdr_mutex);
     }
 }
 
@@ -577,34 +578,34 @@ static void *recv_loop(void *arg) {
             bp_release_delivery(&dlv, 1);
             break;
         } else if (dlv.result == BpPayloadPresent) {
-            if (!atomic_load(&has_dest)) {
-                if (!is_null_or_invalid_eid(dlv.bundleSourceEid)) {
-                    dest_eid = strdup(dlv.bundleSourceEid);
-                    if (dest_eid == NULL) {
-                        bp_release_delivery(&dlv, 1);
-                        warn("not enough memory to copy destination EID");
+            if (atomic_load(&has_dest)) {
+                if (!kflag && strcmp(dlv.bundleSourceEid, dest_eid) != 0) {
+                    bp_release_delivery(&dlv, 1);
+                    continue;
+                }
+            } else if (!is_null_or_invalid_eid(dlv.bundleSourceEid)) {
+                dest_eid = strdup(dlv.bundleSourceEid);
+                if (dest_eid == NULL) {
+                    bp_release_delivery(&dlv, 1);
+                    warn("not enough memory to copy destination EID");
+                    return NULL;
+                }
+
+                pthread_mutex_lock(&sdr_mutex);
+                while (!STAILQ_EMPTY(&head)) {
+                    struct zco_entry *n = STAILQ_FIRST(&head);
+                    bool should_ret = drain(n->zco);
+                    if (should_ret) {
+                        pthread_mutex_unlock(&sdr_mutex);
                         return NULL;
                     }
-
-                    pthread_mutex_lock(&sdr_mutex);
-                    while (!STAILQ_EMPTY(&head)) {
-                        struct zco_entry *n = STAILQ_FIRST(&head);
-                        bool should_ret = drain(n->zco);
-                        if (should_ret) {
-                            pthread_mutex_unlock(&sdr_mutex);
-                            return NULL;
-                        }
-                        STAILQ_REMOVE_HEAD(&head, entries);
-                        free(n);
-                    }
-                    pthread_mutex_unlock(&sdr_mutex);
-
-                    atomic_store(&has_dest, true);
-                    pthread_kill(main_thread_id, SIGUSR1);
+                    STAILQ_REMOVE_HEAD(&head, entries);
+                    free(n);
                 }
-            } else if (!kflag && strcmp(dlv.bundleSourceEid, dest_eid) != 0) {
-                bp_release_delivery(&dlv, 1);
-                continue;
+                pthread_mutex_unlock(&sdr_mutex);
+
+                atomic_store(&has_dest, true);
+                pthread_kill(main_thread_id, SIGUSR1);
             }
 
             update_activity();
