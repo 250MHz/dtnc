@@ -31,6 +31,7 @@
 static bool dflag; // Detached, no stdin
 static bool kflag; // Listen mode accepts > 1 non-anonymous sources
 static bool lflag; // Listen mode
+static bool Nflag; // Stop netin on EOF on stdin when not listen mode
 static char *sflag = NULL; // Source EID for bundles we send
 
 static int recvcount, recvlimit;
@@ -98,7 +99,7 @@ int main(int argc, char *argv[]) {
         err(EXIT_FAILURE, "could not change action of SIGTERM");
     }
 
-    while ((ch = getopt(argc, argv, "dklM:s:W:w:")) != -1) {
+    while ((ch = getopt(argc, argv, "dklM:Ns:W:w:")) != -1) {
         switch (ch) {
             case 'd':
                 dflag = true;
@@ -114,6 +115,9 @@ int main(int argc, char *argv[]) {
                 if (errstr != NULL) {
                     errx(EXIT_FAILURE, "ttl is %s", errstr);
                 }
+                break;
+            case 'N':
+                Nflag = true;
                 break;
             case 's':
                 sflag = optarg;
@@ -475,6 +479,13 @@ static void send_loop(void) {
             continue;
         } else if (ret == 0 || ret == -1) {
             pfd[0].fd = -1;
+            if (Nflag && !lflag) {
+                atomic_store(&stopped_recv, true);
+                if (sap != NULL) {
+                    bp_interrupt(sap);
+                    pthread_kill(recv_thread_id, SIGUSR1);
+                }
+            }
             continue;
         }
 
@@ -762,9 +773,9 @@ static void usage(bool should_exit) {
     (void)fprintf(
         stderr,
         // clang-format off
-"usage: %s [-d] [-M ttl] [-s source] [-W recvlimit] [-w timeout]\n"
+"usage: %s [-dN] [-M ttl] [-s source] [-W recvlimit] [-w timeout]\n"
 "            destination_eid\n"
-"       %s [-dkl] [-M ttl] [-W recvlimit] [-w timeout] source_eid\n",
+"       %s [-dklN] [-M ttl] [-W recvlimit] [-w timeout] source_eid\n",
         // clang-format on
         p,
         p
